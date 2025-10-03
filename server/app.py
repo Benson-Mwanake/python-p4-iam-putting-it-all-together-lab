@@ -58,7 +58,9 @@ class Login(Resource):
 
 class Logout(Resource):
     def delete(self):
-        session.pop("user_id", None)
+        if not session.get("user_id"):
+            return {"errors": ["Unauthorized"]}, 401
+        session.pop("user_id")
         return {}, 204
 
 
@@ -67,7 +69,11 @@ class Logout(Resource):
 
 class RecipeIndex(Resource):
     def get(self):
-        recipes = Recipe.query.all()
+        user_id = session.get("user_id")
+        if not user_id:
+            return {"errors": ["Unauthorized"]}, 401
+
+        recipes = Recipe.query.filter_by(user_id=user_id).all()
         return [recipe.to_dict() for recipe in recipes], 200
 
     def post(self):
@@ -92,31 +98,13 @@ class RecipeIndex(Resource):
             return {"errors": [str(e)]}, 422
 
 
-# ---------- REGISTER RESOURCES SAFELY ----------
+# ---------- REGISTER RESOURCES ----------
 
-
-def register_resources():
-    """Register API resources once (avoid duplicate endpoint errors during pytest)."""
-    existing_endpoints = {rule.endpoint for rule in app.url_map.iter_rules()}
-
-    if "signup" not in existing_endpoints:
-        api.add_resource(Signup, "/signup", endpoint="signup")
-
-    if "check_session" not in existing_endpoints:
-        api.add_resource(CheckSession, "/check_session", endpoint="check_session")
-
-    if "login" not in existing_endpoints:
-        api.add_resource(Login, "/login", endpoint="login")
-
-    if "logout" not in existing_endpoints:
-        api.add_resource(Logout, "/logout", endpoint="logout")
-
-    if "recipes" not in existing_endpoints:
-        api.add_resource(RecipeIndex, "/recipes", endpoint="recipes")
-
-
-# Run registration once at import time
-register_resources()
+api.add_resource(Signup, "/signup", endpoint="signup")
+api.add_resource(CheckSession, "/check_session", endpoint="check_session")
+api.add_resource(Login, "/login", endpoint="login")
+api.add_resource(Logout, "/logout", endpoint="logout")
+api.add_resource(RecipeIndex, "/recipes", endpoint="recipes")
 
 
 if __name__ == "__main__":
