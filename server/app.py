@@ -58,9 +58,11 @@ class Login(Resource):
 
 class Logout(Resource):
     def delete(self):
+        # If the session has no active user, return 401 (tests set session['user_id'] = None)
         if not session.get("user_id"):
             return {"errors": ["Unauthorized"]}, 401
-        session.pop("user_id")
+
+        session.pop("user_id", None)
         return {}, 204
 
 
@@ -69,6 +71,7 @@ class Logout(Resource):
 
 class RecipeIndex(Resource):
     def get(self):
+        # Require logged-in user
         user_id = session.get("user_id")
         if not user_id:
             return {"errors": ["Unauthorized"]}, 401

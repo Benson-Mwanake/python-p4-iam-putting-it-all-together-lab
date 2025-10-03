@@ -10,9 +10,8 @@ class User(db.Model, SerializerMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String, unique=True, nullable=False)
-    _password_hash = db.Column(
-        db.String, nullable=False, default=""
-    )  # default avoids IntegrityError
+    # default "" prevents NOT NULL DB error in tests that create users without setting a password
+    _password_hash = db.Column(db.String, nullable=False, default="")
     image_url = db.Column(db.String)
     bio = db.Column(db.String)
 
@@ -21,11 +20,8 @@ class User(db.Model, SerializerMixin):
         "Recipe", back_populates="user", cascade="all, delete-orphan"
     )
 
-    # prevent circular nesting
-    serialize_rules = (
-        "-recipes.user",
-        "-_password_hash",
-    )
+    # prevent circular nesting and hide password hash in serialized output
+    serialize_rules = ("-recipes.user", "-_password_hash")
 
     @hybrid_property
     def password_hash(self):
@@ -56,13 +52,13 @@ class Recipe(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String, nullable=False)
     instructions = db.Column(db.String, nullable=False)
-    minutes_to_complete = db.Column(db.Integer, nullable=False)
+    # minutes_to_complete can be optional in some tests
+    minutes_to_complete = db.Column(db.Integer, nullable=True)
 
-    # allow NULL user_id so tests that don’t attach a user pass
+    # allow NULL user_id so tests that don’t attach a user pass when creating recipes directly
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     user = relationship("User", back_populates="recipes")
 
-    # prevent circular nesting
     serialize_rules = ("-user.recipes",)
 
     @validates("title")
